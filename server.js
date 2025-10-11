@@ -12,6 +12,7 @@ app.use(express.json()); //data parser
 
 app.use("/api/contacts",require ("./routes/contactRoutes"));
 //redirects /api/contacts to contactRoutes file
+app.use("/api/users",require ("./routes/userRoutes"));
 
 app.use(errorHandler);
 
