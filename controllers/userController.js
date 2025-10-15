@@ -1,5 +1,6 @@
 const asyncHandler = require("express-async-handler");
 const User = require("../models/userModel");
+const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 
 
@@ -13,6 +14,7 @@ const registerUser = asyncHandler(async (req,res)=>{
         res.status(400);
         throw new Error("All fields are mandatory!!")
     }
+        // to check if the user is existing ⬇️
         const userAvailable = await User.findOne({email});
         if(userAvailable){
             res.status(400);
@@ -21,14 +23,19 @@ const registerUser = asyncHandler(async (req,res)=>{
         //Hash Password
         const hashedPassword = await bcrypt.hash(password, 10);
         console.log("Hashed Password:",hashedPassword)
+        // the user is does not exist ⬇️
         const user = await User.create({
             username,
             email,
             password:hashedPassword
         });
-        console.log(`Usr Created ${user}`)
+        console.log(`User Created ${user}`)
         if(user){
-            res.status(201)
+            res.status(201).json({_id: user.id,email:user.email});
+        }
+        else{
+            res.status(400)
+            throw new Error("User data not found");
         }
         res.json({message:"Register the user"});
 });
@@ -38,7 +45,28 @@ const registerUser = asyncHandler(async (req,res)=>{
 //@access public
 
 const loginUser = asyncHandler(async (req,res)=>{
-    res.json({message:"login user"});
+    const {email,password} = req.body;
+    if(!email || !password){
+        res.status(400);
+        throw new Error("All fields are mandtory");
+    }
+    const user = await User.findOne({email});
+    //compare password with hashed
+    if(user && (await bcrypt.compare(password, user.password))){
+        const accessToken = jwt.sign({
+            user:{ // I have doubt here
+                username: user.username,
+                email:user.email,
+                id:user.id 
+            },
+        },process.env.ACCESS_TOKEN_SECRET,
+        {expiresIn:"1m"}
+    );
+        res.status(200).json({accessToken});
+    }else {
+        res.status(401)
+        throw new Error("email or password is not valid");
+    }
 });
 
 //@desc current user info
